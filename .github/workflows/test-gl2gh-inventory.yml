@@ -1,0 +1,56 @@
+name: Test GL2GH Inventory
+
+on:
+  workflow_dispatch:
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+
+    env:
+      GITLAB_SERVER_URL: ${{ vars.GITLAB_SERVER_URL }}
+      GITLAB_PAT: ${{ secrets.GITLAB_PAT }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install GL2GH
+        run: |
+          gh extension install github/gh-gl2gh
+          gh gl2gh --version
+
+      - name: Generate inventory
+        run: |
+          gh gl2gh inventory-report \
+            --gitlab-server-url "$GITLAB_SERVER_URL" \
+            --gitlab-group "cloud-team" \
+            --gitlab-pat "$GITLAB_PAT" \
+            --verbose
+
+      - name: Show generated files
+        if: always()
+        run: |
+          echo "=== Files ==="
+          ls -la
+
+          if [[ -f groups.csv ]]; then
+            echo "=== groups.csv ==="
+            cat groups.csv
+          fi
+
+          if [[ -f projects.csv ]]; then
+            echo "=== projects.csv ==="
+            cat projects.csv
+          fi
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gl2gh-inventory-test
+          path: |
+            groups.csv
+            projects.csv
+            *.log
+          if-no-files-found: ignore
