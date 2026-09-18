@@ -1,0 +1,47 @@
+name: Test GitLab Stats
+
+on:
+  workflow_dispatch:
+
+jobs:
+  gitlab-stats:
+    runs-on: ubuntu-latest
+
+    env:
+      GITLAB_SERVER_URL: ${{ vars.GITLAB_SERVER_URL }}
+      GITLAB_PAT: ${{ secrets.GITLAB_PAT }}
+
+    steps:
+      - name: Install gitlab-stats
+        run: |
+          gh extension install mona-actions/gh-gitlab-stats
+          gh gitlab-stats --help
+
+      - name: Generate GitLab stats
+        run: |
+          gh gitlab-stats \
+            --hostname "$GITLAB_SERVER_URL" \
+            --token "$GITLAB_PAT" \
+            --groups "cloud-team" \
+            --output-file "gitlab-stats.csv"
+
+      - name: Show output
+        if: always()
+        run: |
+          echo "=== Generated files ==="
+          ls -la
+
+          if [[ -f gitlab-stats.csv ]]; then
+            echo "=== gitlab-stats.csv ==="
+            cat gitlab-stats.csv
+          else
+            echo "gitlab-stats.csv was not generated"
+          fi
+
+      - name: Upload output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitlab-stats-test
+          path: gitlab-stats.csv
+          if-no-files-found: ignore
